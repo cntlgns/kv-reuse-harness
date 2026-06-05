@@ -1,0 +1,50 @@
+# TODO: (vatshank) add TB2 related fields. (dataset.name)
+max_llm_iterations: 500
+env:
+  env_type: docker  # "docker" or "local"
+  retry:
+    retry_on_no_change:
+        max_attempts: 1
+  timeout: 200
+  docker:
+    base_image: "swebench/sweb.eval.x86_64.django_1776_django-15987"
+    workdir: "/testbed"
+    hold_command: "bash" # TODO: can be done with docker api instead?
+    command_prefix: "source /opt/miniconda3/etc/profile.d/conda.sh && conda activate testbed"
+    root_setup_commands: ["apt-get update && apt-get install ripgrep"]
+    setup_commands: []
+    tool_install_commands: []
+    internet_access: False
+  local:
+    workdir: "/home/gauravaz/workplace/CSM_swe/src/CodeStateMachinesSWEBench/src/examples/swebench/scripts/csm_output"
+
+aws:
+  region: "us-west-2"
+
+dataset:
+  name: sbv # tb2 or sbv or sbpro
+  identifier: django__django-15987
+  issue_description:
+
+agent:
+  agent_id: SimpleResolverAgent
+  model: openai/gpt-5.4
+  prompt_tag: swe_generic_v3
+  invoker: openai
+  invoker_params:
+    use_previous_id: true # if true, will enable previous_response_id in agentic tool calls
+    reasoning:
+      effort: xhigh
+  tools:
+    bash:
+    str_replace_editor:
+      restrict_workspace_create: False
+
+hydra:
+  run:
+    dir: ./outputs/swebench/${now:%Y-%m-%d}/${now:%H-%M-%S}
+
+  job_logging:
+    captures:
+        stdout: true
+        stderr: true

@@ -1,0 +1,56 @@
+# TODO: (vatshank) add TB2 related fields. (dataset.name)
+max_llm_iterations: 500
+env:
+  env_type: docker  # "docker" or "local"
+  retry:
+    retry_on_no_change:
+        max_attempts: 1
+  timeout: 200
+  docker:
+    base_image: "swebench/sweb.eval.x86_64.django_1776_django-15987"
+    workdir: "/testbed"
+    hold_command: "bash" # TODO: can be done with docker api instead?
+    command_prefix: "source /opt/miniconda3/etc/profile.d/conda.sh && conda activate testbed"
+    root_setup_commands: ["apt-get update && apt-get install ripgrep"]
+    setup_commands: []
+    tool_install_commands: []
+    internet_access: False
+  local:
+    workdir: "/home/gauravaz/workplace/CSM_swe/src/CodeStateMachinesSWEBench/src/examples/swebench/scripts/csm_output"
+
+aws:
+  region: "us-west-2"
+
+dataset:
+  name: sbv # tb2 or sbv or sbpro
+  identifier: django__django-15987
+  issue_description:
+
+agent:
+  agent_id: SimpleResolverAgent
+  model: global.anthropic.claude-haiku-4-5-20251001-v1:0
+  prompt_tag: Anthropic_v2
+  invoker: bedrock
+  prompt_caching: false
+  prompt_caching_params:
+    strategy: custom
+    cache_period: 5
+  invoker_params:
+    additional_request_fields:
+      anthropic_beta:
+        - interleaved-thinking-2025-05-14
+      thinking:
+        type: enabled
+        budget_tokens: 128_000
+  tools:
+    bash:
+    str_replace_editor:
+
+hydra:
+  run:
+    dir: ./outputs/swebench/${now:%Y-%m-%d}/${now:%H-%M-%S}
+
+  job_logging:
+    captures:
+        stdout: true
+        stderr: true

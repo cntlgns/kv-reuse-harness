@@ -1,0 +1,15 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+outputs/*
+simple-strands-agent/scripts/**/outputs/*
+*.egg-info
+
+# Virtual environments
+.venv
+
+# VSCode-generated env (bedrock token)
+.vscode/.env

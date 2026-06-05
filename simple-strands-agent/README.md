@@ -1,0 +1,91 @@
+<div align="center">
+
+<img src="resources/img/SSA_logo.svg" alt="SSA logo" width="520"/>
+
+# Simple Strands Agent
+
+**A lean autonomous-coding agent achieving state-of-the-art performance across software engineering benchmarks.**
+
+[![Python](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Docker](https://img.shields.io/badge/docker-required-2496ED.svg?logo=docker&logoColor=white)](https://www.docker.com/)
+
+</div>
+
+---
+
+## Overview
+
+Simple Strands Agent (SSA) is a minimal, hackable harness for autonomous software engineering. It pairs frontier LLMs (Claude, GPT, Gemini, and open-weight models via Bedrock/LiteLLM/vLLM) with `bash` and file-editing tools inside isolated Docker environments to analyze codebases, diagnose bugs, write patches, and verify solutions.
+
+The harness is built for **rapid experimentation** — swap models, tune prompts, adjust tool behavior, and benchmark all in a single config change. Despite its simplicity, SSA delivers SOTA-level results on widely-used coding benchmarks including **SWE-Bench Verified**, **SWE-Bench Pro**, and **Terminal Bench 2**.
+
+## Highlights
+
+- **Model-agnostic** — first-class adapters for Anthropic, OpenAI, Google, xAI, Bedrock, and any OpenAI-compatible endpoint (vLLM, LiteLLM, Together, Vertex, Z.AI).
+- **Composable tools** — `bash`, `str_replace_editor`, `think`, and `submit` primitives with per-tool output clipping and timeout controls.
+- **Isolated environments** — Docker-backed sandboxes with streaming exec, automatic image resolution, and ECR support.
+- **Hydra-powered configs** — every knob is overridable from the command line; experiments are reproducible from a single YAML.
+- **Built-in benchmarking** — turnkey scripts for SWE-Bench Verified, SWE-Bench Pro, and Terminal Bench 2, including S3 result upload.
+
+## Prerequisites
+
+- **Python** 3.12+
+- **Docker** (for containerized task environments)
+- **AWS credentials** configured for Bedrock model access and ECR image pulls
+- **[uv](https://github.com/astral-sh/uv)** package manager (recommended)
+
+## Installation
+
+This package lives in the [`strands-benchmark-harnesses`](https://github.com/strands-labs/strands-benchmark-harnesses)
+monorepo as a [uv workspace](https://docs.astral.sh/uv/concepts/projects/workspaces/) member.
+
+```bash
+git clone https://github.com/strands-labs/strands-benchmark-harnesses.git
+cd strands-benchmark-harnesses
+
+# Recommended: sync the workspace (creates .venv with this package + its deps)
+uv sync
+source .venv/bin/activate
+
+# Or install just this package with pip
+pip install -e .
+```
+
+## Quick Start
+
+### Run a single instance
+
+```bash
+uv run python -m ssa.run \
+    --config-name=default.yaml \
+    dataset.name=sbv \
+    dataset.identifier=django__django-15987 \
+    env.env_type=docker \
+    env.docker.workdir="/testbed"
+```
+
+
+## Configuration
+
+SSA uses [Hydra](https://hydra.cc/) for configuration. All configs live in `src/ssa/configs/`, and any parameter can be overridden from the command line. Start from `src/ssa/configs/default.yaml` for the full schema, then mix in a model-specific config as needed.
+
+## Repository Layout
+
+```
+src/ssa/
+├── agent.py / agent_runner.py     # Core agent loop
+├── models/                        # Model adapters (Anthropic, OpenAI, Bedrock, ...)
+├── tools/                         # bash, str_replace_editor, think, submit
+├── environments/                  # Docker-backed sandbox
+├── conversation_manager/          # Context management & truncation
+├── hooks/ • callbacks/ • metrics/ # Observability and instrumentation
+├── prompts/ • configs/            # System prompts and Hydra configs
+└── run.py                         # Entry point
+scripts/
+├── swe_verified/ • swe_pro/ • tb2/
+```
+
+## License
+
+Released under the [Apache License 2.0](LICENSE).

@@ -1,0 +1,90 @@
+[project]
+name = "simple-strands-agent"
+dynamic = ["version"]
+description = "A lean autonomous-coding agent for working with software engineering benchmarks."
+readme = "README.md"
+authors = [
+    {name = "AWS", email = "opensource@amazon.com"},
+]
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+keywords = ["agent", "agentic", "llm", "benchmark", "coding-agent", "strands", "autonomous"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic==0.96",
+    "boto3>=1.42.54,<2.0.0",
+    "datasets>=4.0,<5.0.0",
+    "pyarrow>=21.0.0,<23",
+    "docker>=7.1.0,<8.0.0",
+    "google-genai>=1.64.0,<3.0.0",
+    "hydra-core>=1.3.2,<2.0.0",
+    "jinja2>=3.1.6,<4.0.0",
+    "litellm>=1.81.15,<2.0.0",
+    "lxml>=6.0.2,<7.0.0",
+    "numpy>=2.1,<2.3",
+    "openai>=2.21.0,<3.0.0",
+    "pydantic>=2.12.5,<3.0.0",
+    "requests>=2.32.5,<3.0.0",
+    "strands-agents>=1.27.0,<=1.27.0",
+    "harbor==0.2.0",
+    "xai-sdk>=1.11.0,<2.0.0",
+    "openpyxl>=3.1.5,<4.0.0",
+    "pytest-asyncio>=1.3.0,<2.0.0",
+    "aws-bedrock-token-generator>=1.1.0,<2.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/strands-labs/strands-benchmark-harnesses/tree/main/simple-strands-agent"
+Documentation = "https://github.com/strands-labs/strands-benchmark-harnesses/tree/main/simple-strands-agent#readme"
+Repository = "https://github.com/strands-labs/strands-benchmark-harnesses.git"
+Issues = "https://github.com/strands-labs/strands-benchmark-harnesses/issues"
+
+[project.optional-dependencies]
+test = [
+    "pytest>=9.0.2,<10.0.0",
+]
+dev = [
+    "pytest>=9.0.2,<10.0.0",
+]
+
+[project.scripts]
+ssa = "ssa:main"
+
+[tool.hatch.envs.default]
+dependencies = [
+    "pytest>=9.0.2,<10.0.0",
+    "ruff>=0.14.0,<0.15.0",
+]
+
+[tool.hatch.envs.default.scripts]
+test = "pytest {args:tests}"
+lint = "ruff check {args:src tests}"
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ssa"]
+
+[tool.hatch.version]
+source = "vcs"
+raw-options = { root = "..", search_parent_directories = true }

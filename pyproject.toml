@@ -1,0 +1,10 @@
+# Workspace root for the Strands Benchmark Harnesses monorepo.
+# This is a "virtual" workspace root: it builds nothing itself and only
+# coordinates the member packages below. Each member has its own
+# pyproject.toml and is published independently.
+#
+# Common commands (run from this directory):
+#   uv sync                                  # install all members + dev deps
+
+[tool.uv.workspace]
+members = ["simple-strands-agent"]

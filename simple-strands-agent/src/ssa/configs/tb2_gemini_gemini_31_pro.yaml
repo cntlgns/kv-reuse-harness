@@ -1,0 +1,52 @@
+max_llm_iterations: 500
+env:
+  env_type: docker  # "docker" or "local"
+  retry:
+    retry_second_chance:
+        max_attempts: 1
+  timeout: 120
+  docker:
+    base_image: "swebench/sweb.eval.x86_64.django_1776_django-15987"
+    workdir: "/app"
+    hold_command: "bash"
+    command_prefix: ""
+    root_setup_commands: ["apt-get update && apt-get install ripgrep"]
+    setup_commands: []
+    tool_install_commands: []
+    internet_access: true
+  local:
+    workdir: "/home/gauravaz/workplace/CSM_swe/src/CodeStateMachinesSWEBench/src/examples/swebench/scripts/csm_output"
+
+aws:
+  region: "us-west-2"
+
+dataset:
+  name: tb2 # tb2 or sbv or sbpro
+  identifier: password-recovery
+  issue_description:
+
+agent:
+  agent_id: SimpleResolverAgent
+  model: gemini-3.1-pro-preview
+  prompt_tag: tb2_gemini
+  invoker: gemini
+  invoker_params:
+    temperature: 1.0
+    thinking_config:
+      include_thoughts: true
+      thinking_level: HIGH
+
+  tools:
+    batch_bash:
+    str_replace_editor:
+      restrict_workspace_create: False
+    submit:
+
+hydra:
+  run:
+    dir: ./outputs/swebench/${now:%Y-%m-%d}/${now:%H-%M-%S}
+
+  job_logging:
+    captures:
+        stdout: true
+        stderr: true

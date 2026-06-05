@@ -1,0 +1,49 @@
+# TODO: (vatshank) add TB2 related fields. (dataset.name)
+max_llm_iterations: 500
+env:
+  env_type: docker  # "docker" or "local"
+  retry:
+    retry_on_no_change:
+      max_attempts: 1
+      
+  timeout: 200
+  docker:
+    base_image: "jefzda/sweap-images:navidrome.navidrome-navidrome__navidrome-09ae41a2da66264c60ef307882362d2e2d8d8b89"
+    workdir: "/app"
+    hold_command: "bash" # TODO: can be done with docker api instead?
+    command_prefix: ""
+    root_setup_commands: ["apt-get update && apt-get install ripgrep"]
+    setup_commands: []
+    tool_install_commands: []
+    internet_access: False
+  local:
+    workdir: "/home/gauravaz/workplace/CSM_swe/src/CodeStateMachinesSWEBench/src/examples/swebench/scripts/csm_output"
+
+aws:
+  region: "us-west-2"
+
+dataset:
+  name: sbpro # tb2 or sbv or sbpro
+  identifier: jefzda/sweap-images:navidrome.navidrome-navidrome__navidrome-09ae41a2da66264c60ef307882362d2e2d8d8b89
+  issue_description:
+
+agent:
+  agent_id: SimpleResolverAgent
+  model: openai/gpt-5.2-codex 
+  prompt_tag: swe_generic_v2
+  invoker: openai
+  invoker_params:
+    use_previous_id: true # if true, will enable previous_response_id in agentic tool calls
+    reasoning:
+      effort: xhigh
+  tools:
+    openai.shell:
+
+hydra:
+  run:
+    dir: ./outputs/swebench/${now:%Y-%m-%d}/${now:%H-%M-%S}
+
+  job_logging:
+    captures:
+        stdout: true
+        stderr: true
