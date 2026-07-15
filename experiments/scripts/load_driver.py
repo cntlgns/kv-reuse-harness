@@ -173,6 +173,10 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--prepull", action="store_true",
                     help="docker-pull all manifest images before starting the clock")
+    ap.add_argument("--stop-mode", choices=["drain", "kill"], default="drain",
+                    help="at duration end: 'drain' lets in-flight tasks finish; "
+                         "'kill' SIGTERMs them (post-window completions are "
+                         "excluded from analysis anyway)")
     args = ap.parse_args()
 
     with open(args.manifest) as f:
@@ -236,7 +240,25 @@ def main() -> int:
             time.sleep(5)
         stop_launch.set()
         events.emit("launch_stopped")
-    for t in threads:  # drain: in-flight tasks run to completion
+        if args.stop_mode == "kill":
+            with active_lock:
+                procs = list(active.values())
+            for p in procs:
+                try:
+                    os.killpg(p.pid, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
+            events.emit("kill_sent", n=len(procs))
+            for t in threads:
+                t.join(timeout=180)
+            with active_lock:  # escalate on stragglers
+                procs = list(active.values())
+            for p in procs:
+                try:
+                    os.killpg(p.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+    for t in threads:  # drain mode: in-flight tasks run to completion
         t.join()
 
     events.emit("run_end")

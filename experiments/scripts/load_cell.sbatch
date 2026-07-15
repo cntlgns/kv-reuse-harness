@@ -27,7 +27,13 @@ MANIFEST="${6:-$DEFAULT_MANIFEST}"
 
 echo "==== load cell host=$(hostname) bench=$BENCH arm=$ARM M=$M dur=${DUR}s name=$NAME ===="
 df -h /var/lib/docker / 2>/dev/null | tail -2
-exec python3 "$REPO/experiments/scripts/load_driver.py" \
+python3 "$REPO/experiments/scripts/load_driver.py" \
   --bench "$BENCH" --arm "$ARM" -M "$M" --duration "$DUR" \
   --manifest "$MANIFEST" \
-  --out "$REPO/experiments/results/load/$NAME" --prepull
+  --out "$REPO/experiments/results/load/$NAME" --prepull --stop-mode kill
+rc=$?
+# Killed tasks can leave their ssa_dkr_* containers behind; sweep them so the
+# next cell starts from a clean node.
+docker ps -aq --filter name=ssa_dkr_ | xargs -r docker rm -f >/dev/null 2>&1
+echo "==== cell done rc=$rc $(date -u +%H:%M:%S) ===="
+exit $rc
