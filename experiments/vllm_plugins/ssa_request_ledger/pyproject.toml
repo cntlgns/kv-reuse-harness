@@ -1,0 +1,15 @@
+[project]
+name = "ssa-request-ledger"
+version = "0.1.0"
+description = "vLLM stat-logger plugin: per-request JSONL ledger for SSA cost experiments"
+requires-python = ">=3.10"
+
+[project.entry-points."vllm.stat_logger_plugins"]
+ssa_request_ledger = "ssa_request_ledger:RequestLedgerLogger"
+
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

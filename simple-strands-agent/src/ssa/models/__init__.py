@@ -53,6 +53,7 @@ def sr_model(cfg: DictConfig) -> Model:
             include_reasoning_in_history = invoker_params.pop("include_reasoning_in_history", False)
             cache_client = invoker_params.pop("cache_client", True)
             provide_session_id = invoker_params.pop("provide_session_id", False)
+            request_log = invoker_params.pop("request_log", False)
             client_args = invoker_params.pop("client_args", {})
             return SROpenAIModel(
                 model_id=model_id.removeprefix("openai/"), # make compatible with litellm
@@ -65,6 +66,7 @@ def sr_model(cfg: DictConfig) -> Model:
                 include_reasoning_in_history=include_reasoning_in_history,
                 cache_client=cache_client,
                 provide_session_id=provide_session_id,
+                request_log=request_log,
             )
         case "xai":
             conv_id = invoker_params.pop("conv_id", None)

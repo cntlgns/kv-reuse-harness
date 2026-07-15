@@ -1,6 +1,7 @@
 
 import logging
 import os
+import time
 import uuid
 import httpx
 import openai
@@ -66,6 +67,7 @@ class SROpenAIModel(OpenAIModel):
         include_reasoning_in_history: bool = False,
         cache_client: bool = True,
         provide_session_id: bool | str = False,
+        request_log: bool = False,
         **kwargs: Any,
     ) -> None:
         self.use_previous_id = use_previous_id
@@ -90,6 +92,14 @@ class SROpenAIModel(OpenAIModel):
         self._last_error_message: str | None = None
         # Harmony token ids accumulated during the most recent chat-completions
         self._last_stream_token_ids: list[int] = []
+        # Per-request telemetry (requests.jsonl + request_id tagging), off by
+        # default so measurement runs opt in without touching other configs.
+        self.request_log = request_log
+        self._call_seq = 0
+        # Distinguishes repeated runs of the same (bench, arm, task) triple so
+        # request_ids stay globally unique in the server-side ledger.
+        self._run_token = uuid.uuid4().hex[:6]
+        self._current_request_id: str | None = None
         super().__init__(**kwargs)
         if self.cache_client:
             # Build once and reuse
@@ -352,7 +362,101 @@ class SROpenAIModel(OpenAIModel):
             },
         }
 
+    def _rlog_begin(self, messages: Messages, kwargs: dict[str, Any]) -> dict[str, Any]:
+        """Start a per-call telemetry record and mint the request_id.
+
+        The request_id is injected into the outgoing request body (vLLM carries
+        it through the engine into its per-request stats), so client and server
+        records of the same call can be joined offline.
+        """
+        invocation_state = kwargs.get("invocation_state") or {}
+        meta = invocation_state.get("request_meta") or {}
+        self._call_seq += 1
+        rec: dict[str, Any] = {
+            "seq": self._call_seq,
+            "ts_send": time.time(),
+            "n_messages": len(messages),
+        }
+        self._current_request_id = None
+        if self.request_log and meta.get("output_dir"):
+            request_id = "{}.{}.{}.{}.c{:04d}".format(
+                meta.get("bench", "na"),
+                meta.get("arm", "na"),
+                meta.get("task_id", "na"),
+                self._run_token,
+                self._call_seq,
+            )
+            self._current_request_id = request_id
+            rec["request_id"] = request_id
+            rec["_path"] = os.path.join(meta["output_dir"], "requests.jsonl")
+        return rec
+
+    def _rlog_observe(self, rec: dict[str, Any], chunk: StreamEvent) -> None:
+        """Fold a stream chunk into the telemetry record; fix up latencyMs."""
+        now = time.time()
+        if "ts_first_chunk" not in rec and "messageStart" not in chunk:
+            rec["ts_first_chunk"] = now
+        metadata = chunk.get("metadata")
+        if metadata:
+            usage = metadata.get("usage") or {}
+            rec["prompt_tokens"] = usage.get("inputTokens")
+            rec["completion_tokens"] = usage.get("outputTokens")
+            rec["total_tokens"] = usage.get("totalTokens")
+            if "cacheReadInputTokens" in usage:
+                rec["cached_tokens"] = usage["cacheReadInputTokens"]
+            if "reasoningTokens" in usage:
+                rec["reasoning_tokens"] = usage["reasoningTokens"]
+            # format_chunk hardcodes latencyMs=0; overwrite with the measured
+            # wall-clock so accumulated_latency_ms in metrics.json is real.
+            metadata.setdefault("metrics", {})["latencyMs"] = int(
+                (now - rec["ts_send"]) * 1000
+            )
+        message_stop = chunk.get("messageStop")
+        if message_stop:
+            rec["finish_reason"] = message_stop.get("stopReason")
+
+    def _rlog_end(self, rec: dict[str, Any]) -> None:
+        self._current_request_id = None
+        path = rec.pop("_path", None)
+        rec["ts_end"] = time.time()
+        rec["latency_ms"] = int((rec["ts_end"] - rec["ts_send"]) * 1000)
+        if "ts_first_chunk" in rec:
+            rec["ttft_ms"] = int((rec.pop("ts_first_chunk") - rec["ts_send"]) * 1000)
+        if not path:
+            return
+        try:
+            with open(path, "a") as f:
+                f.write(json.dumps(rec) + "\n")
+        except OSError as e:
+            LOG.warning("failed to append request log %s: %s", path, e)
+
     async def _stream_chat_completions(
+        self,
+        messages: Messages,
+        tool_specs: list[ToolSpec] | None = None,
+        system_prompt: str | None = None,
+        *,
+        tool_choice: ToolChoice | None = None,
+        **kwargs: Any,
+    ) -> AsyncGenerator[StreamEvent, None]:
+        rec = self._rlog_begin(messages, kwargs)
+        try:
+            async for chunk in self._stream_chat_completions_impl(
+                messages,
+                tool_specs,
+                system_prompt,
+                tool_choice=tool_choice,
+                **kwargs,
+            ):
+                self._rlog_observe(rec, chunk)
+                yield chunk
+        except BaseException as e:
+            rec["error"] = f"{type(e).__name__}: {str(e)[:300]}"
+            raise
+        finally:
+            self._rlog_end(rec)
+
+    async def _stream_chat_completions_impl(
         self,
         messages: Messages,
         tool_specs: list[ToolSpec] | None = None,
@@ -365,6 +469,11 @@ class SROpenAIModel(OpenAIModel):
         LOG.debug("formatting request")
         request = self.format_request(messages, tool_specs, system_prompt, tool_choice)
         LOG.debug("formatted request=<%s>", request)
+        if self._current_request_id:
+            # Copy: request["extra_body"] may alias the shared params config.
+            extra_body = dict(request.get("extra_body") or {})
+            extra_body["request_id"] = self._current_request_id
+            request["extra_body"] = extra_body
 
         async with self._get_client() as client:
             extra_headers = {"X-Session-Id": self.session_id} if self.session_id else None
