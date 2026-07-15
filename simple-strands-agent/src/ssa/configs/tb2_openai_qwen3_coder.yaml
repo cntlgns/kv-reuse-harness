@@ -1,0 +1,68 @@
+# Terminal Bench 2 × Qwen3-Coder-30B-A3B via vLLM (cobra:8123, research/base v0.24.0).
+# Requires TB2_REPO_PATH / TB2_ECR_MAP / TB2_INSTRUCTIONS_MAP env vars (see experiments/scripts/run_one.sh).
+# Defaults = arm A (full context). Arm overrides from CLI:
+#   B1: agent.context_window.max_model_len=65536
+#   B2: agent.context_window.max_model_len=32768
+#   C:  agent.conversation_manager.win_len=60
+max_llm_iterations: 500
+env:
+  env_type: docker  # "docker" or "local"
+  retry:
+    retry_second_chance:
+      max_attempts: 1
+  timeout: 120
+  docker:
+    base_image: "swebench/sweb.eval.x86_64.django_1776_django-15987"
+    workdir: "/app"
+    hold_command: "bash"
+    command_prefix: ""
+    root_setup_commands: ["apt-get update && apt-get install ripgrep"]
+    setup_commands: []
+    tool_install_commands: []
+    internet_access: true
+  local:
+    workdir: /tmp
+
+aws:
+  region: "us-west-2"
+
+dataset:
+  name: tb2 # tb2 or sbv or sbpro
+  identifier: fix-git
+  issue_description:
+
+agent:
+  agent_id: SimpleResolverAgent
+  model: qwen3-coder-30b
+  prompt_tag: tb2
+  invoker: openai
+  conversation_manager:
+    win_len: 100000        # arm C overrides to 60
+  context_window:
+    max_model_len: 262144  # arms B1/B2 override; server native ctx is 262144
+    near_limit_threshold: 0.9
+  invoker_params:
+    use_responses_api: False
+    client_args:
+      base_url: http://cobra:8123/v1   # fallback IP: 192.168.10.61
+      api_key: EMPTY
+    max_tokens: 16384
+    temperature: 0.7      # Qwen3-Coder recommended sampling, fixed across arms
+    top_p: 0.8
+    extra_body:
+      top_k: 20
+      repetition_penalty: 1.05
+  tools:
+    bash_timed:
+    str_replace_editor:
+      restrict_workspace_create: False
+      allow_overwrite: true
+
+hydra:
+  run:
+    dir: ./outputs/tb2/${now:%Y-%m-%d}/${now:%H-%M-%S}
+
+  job_logging:
+    captures:
+        stdout: true
+        stderr: true

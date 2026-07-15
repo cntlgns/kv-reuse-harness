@@ -11,5 +11,8 @@ simple-strands-agent/scripts/**/outputs/*
 # Virtual environments
 .venv
 
+# Experiments (data, results, HF cache — not tracked)
+experiments/
+
 # VSCode-generated env (bedrock token)
 .vscode/.env
