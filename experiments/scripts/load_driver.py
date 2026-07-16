@@ -117,6 +117,8 @@ def run_task(seq: int, inst: str, slot: int, args, env, events: EventLog,
         f"hydra.run.dir={out}",
         "++agent.invoker_params.request_log=true",
         *ARM_OVERRIDES[args.arm],
+        *([f"agent.invoker_params.client_args.base_url={args.base_url}"]
+          if args.base_url else []),
     ]
     events.emit("task_start", seq=seq, task_id=inst, slot=slot)
     start = time.monotonic()
@@ -170,6 +172,10 @@ def main() -> int:
                     help="stop launching new tasks after this many seconds; "
                          "0 = single pass through the manifest (no recycling)")
     ap.add_argument("--task-timeout", type=float, default=10800)
+    ap.add_argument("--base-url", default=None,
+                    help="override the agent's OpenAI base_url (e.g. "
+                         "http://cobra:8124/v1) so parallel cells can target "
+                         "different server instances")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--prepull", action="store_true",
                     help="docker-pull all manifest images before starting the clock")
@@ -191,6 +197,7 @@ def main() -> int:
         "manifest": args.manifest, "n_instances": len(instances),
         "duration": args.duration, "task_timeout": args.task_timeout,
         "seed": args.seed, "host": os.uname().nodename,
+        "base_url": args.base_url,
         "start_epoch": round(time.time(), 3),
     }
     with open(os.path.join(args.out, "meta.json"), "w") as f:

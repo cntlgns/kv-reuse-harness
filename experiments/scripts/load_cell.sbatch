@@ -7,7 +7,7 @@
 #SBATCH -o /data_fast/home/sihun/kvcache/kv-reuse-harness/experiments/results/load/logs/%x-%j.log
 
 # One cost-measurement cell: closed-loop load at fixed (bench, arm, M).
-# usage: sbatch -w <node> load_cell.sbatch <bench> <arm> <M> <duration_s> <name> [manifest]
+# usage: sbatch -w <node> load_cell.sbatch <bench> <arm> <M> <duration_s> <name> [manifest] [base_url]
 # The whole node should be dedicated: no scoring/other jobs during the window.
 set -uo pipefail
 REPO=/data_fast/home/sihun/kvcache/kv-reuse-harness
@@ -24,13 +24,15 @@ case "$BENCH" in
   *) echo "unknown bench $BENCH"; exit 2 ;;
 esac
 MANIFEST="${6:-$DEFAULT_MANIFEST}"
+BASE_URL="${7:-}"
 
 echo "==== load cell host=$(hostname) bench=$BENCH arm=$ARM M=$M dur=${DUR}s name=$NAME ===="
 df -h /var/lib/docker / 2>/dev/null | tail -2
 python3 "$REPO/experiments/scripts/load_driver.py" \
   --bench "$BENCH" --arm "$ARM" -M "$M" --duration "$DUR" \
   --manifest "$MANIFEST" \
-  --out "$REPO/experiments/results/load/$NAME" --prepull --stop-mode kill
+  --out "$REPO/experiments/results/load/$NAME" --prepull --stop-mode kill \
+  ${BASE_URL:+--base-url "$BASE_URL"}
 rc=$?
 # Killed tasks can leave their ssa_dkr_* containers behind; sweep them so the
 # next cell starts from a clean node.
