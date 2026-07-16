@@ -15,7 +15,7 @@ import os
 import statistics
 import sys
 
-WARMUP = 600.0
+WARMUP = float(os.environ.get("WARMUP", 600))
 BINS = 6
 
 def read_jsonl(path):
