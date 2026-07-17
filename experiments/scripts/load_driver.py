@@ -44,6 +44,8 @@ ARM_OVERRIDES = {
     "B1": ["agent.context_window.max_model_len=65536"],
     "B2": ["agent.context_window.max_model_len=32768"],
     "C": ["agent.conversation_manager.win_len=60"],
+    "win30": ["agent.conversation_manager.win_len=30"],
+    "win10": ["agent.conversation_manager.win_len=10"],
 }
 
 
