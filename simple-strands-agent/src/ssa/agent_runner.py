@@ -11,6 +11,7 @@ This module:
 """
 
 import logging
+import os
 from omegaconf import DictConfig
 
 from strands.handlers.callback_handler import PrintingCallbackHandler, CompositeCallbackHandler
@@ -75,6 +76,15 @@ def run_agent(
             callback_handler=callback_handler,
         )
         mc.bind(sra)
+        # Task identity for per-request telemetry (see SROpenAIModel request_log):
+        # arm comes from the launcher via SSA_ARM since it is a hydra-override
+        # combination with no config key of its own.
+        request_meta = {
+            "bench": str(cfg.dataset.get("name", "na")),
+            "arm": os.environ.get("SSA_ARM", "na"),
+            "task_id": str(cfg.dataset.get("identifier", "na")),
+            "output_dir": output_dir,
+        }
         sra_result = None
         try:
             # Run agent
@@ -83,6 +93,7 @@ def run_agent(
                     environment=env,
                     show_panel=True,
                     tool_params=tool_params,
+                    request_meta=request_meta,
                 )
                 retry_feedback = env.retry_feedback(sra, sra_result)
                 if retry_feedback:
